@@ -121,13 +121,59 @@
 //! # });
 //! ```
 //!
+//! ## Animation Run State
+//!
+//! The animation [`RunState`] provides insight into the current animation segment and
+//! *normal*. Calling `run_state` will retrieve the state outside of the animations scoped
+//! context. In the example below, `RunState` is used to disable an `egui::Button` for
+//! the duration of an animation.
+//!
+//! ```
+//! # use egui;
+//! # use eframe;
+//! # use egui_animate::*;
+//! # const MY_ANIM: Animation = Animation::EMPTY;
+//! # let mut my_state = 0u32;
+//! # let ctx = egui::Context::default();
+//! # ctx.run(egui::RawInput::default(), |ctx| {
+//! # egui::CentralPanel::default().show(ctx, |ui| {
+//!
+//! let button = egui::Button::new("Increment u32");
+//!
+//! // Get the `RunState` of "my_anim".
+//! if run_state(ui, "my_anim", MY_ANIM).is_running() {
+//!     // Render a disabled button during animation.
+//!     ui.add_enabled(false, button);
+//! } else {
+//!     // Render an enabled button when not animating.
+//!     if ui.add(button).clicked() {
+//!         my_state += 1;
+//!     }
+//! }
+//! // Animate "my_anim".
+//! animate(
+//!     ui,
+//!     "my_anim",
+//!     my_state,
+//!     MY_ANIM,
+//!     |ui, show_ui| {
+//!         // ...
+//!     },
+//! );
+//! # });
+//! # });
+//! ```
+//!
 //! ## Examples
 //!
-//! An example app is provided that demonstrates various transitions including fading,
-//! sliding, clipping, mutating text color, and easing.
+//! Name | Description
+//! ---|---
+//! `showcase` | Various example animations.
+//! `menu` | A minimal dynamic "Main Menu" example.
+//! `variable` | Dynamic increment/decrement animations.
 //!
 //! ```bash
-//! cargo run --example example
+//! cargo run --example [EXAMPLE]
 //! ```
 mod mem;
 
@@ -135,4 +181,4 @@ mod anim;
 mod state;
 
 pub use anim::{Animation, AnimationSegment};
-pub use state::animate;
+pub use state::{RunState, animate, run_state};

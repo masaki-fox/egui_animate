@@ -49,18 +49,59 @@ pub fn animate<T: 'static + Any + Clone + Send + Sync + Default + PartialEq, R>(
 
     let current_time = ui.ctx().input(|input| input.time);
     let current_value = value;
-    let start_value = mem::get_start_value(ui, id, current_value.clone());
+    let start_value = mem::get_or_insert_start_value(ui, id, current_value.clone());
 
     match start_value == current_value {
         true => add_contents(ui, current_value),
         false => {
-            let start_time = mem::get_start_time(ui, id, current_time);
+            let start_time = mem::get_or_insert_start_time(ui, id, current_time);
             let animation = AnimationState::new(start_time, current_time, animation);
 
             ui.ctx().request_repaint();
             animation.animate(ui, id, start_value, current_value, add_contents)
         }
     };
+}
+
+/// Get the [`RunState`] for the animation of the given `id`. Returns `RunState::None`
+/// for animations that do not exist.
+///
+/// # Example
+/// ```
+/// # use egui;
+/// # use eframe;
+/// # use egui_animate::*;
+/// # const MY_ANIM: Animation = Animation::EMPTY;
+/// # let mut my_state: u32 = 0;
+/// #
+/// # let ctx = egui::Context::default();
+/// #
+/// # ctx.run(egui::RawInput::default(), |ctx| {
+/// # egui::CentralPanel::default().show(ctx, |ui| {
+/// #
+/// // Define an animation with a unique `id`.
+/// animate(ui, "my_anim", my_state, MY_ANIM, |ui, value| {
+///     // ...
+/// });
+///
+/// // Render a ui label if the animation is running.
+/// if run_state(ui, "my_anim", MY_ANIM).is_running() {
+///     ui.label("Animation running...");
+/// }
+/// #
+/// # });
+/// # });
+/// ```
+pub fn run_state(ui: &mut egui::Ui, id: impl Into<egui::Id>, animation: Animation) -> RunState {
+    let id: egui::Id = id.into();
+
+    match mem::get_start_time(ui, id) {
+        Some(start_time) => {
+            let current_time = ui.ctx().input(|input| input.time);
+            AnimationState::new(start_time, current_time, animation).run_state()
+        }
+        None => Default::default(),
+    }
 }
 
 /// The current state of an animation. Defines an animation scope, delegating variables
@@ -145,7 +186,7 @@ impl AnimationState {
         self.in_elapsed().map(|elapsed| elapsed / self.in_dur())
     }
 
-    /// Call the `AnimationSegment` for thec
+    /// Call the `AnimationSegment` for the current frame.
     fn animate<T: 'static + Any + Clone + Send + Sync + Default, R>(
         &self,
         ui: &mut egui::Ui,
@@ -154,17 +195,21 @@ impl AnimationState {
         current_value: T,
         add_contents: impl FnOnce(&mut egui::Ui, T) -> R,
     ) -> R {
-        if let Some(normal) = self.out_elapsed_normal() {
-            self.animate_out(ui, id, normal, |ui| add_contents(ui, start_value))
-        } else if let Some(normal) = self.in_elapsed_normal() {
-            mem::clear_animation_layer(ui, id);
-            self.animate_in(ui, id, normal, |ui| add_contents(ui, current_value))
-        } else {
-            mem::clear_start_value::<T>(ui, id);
-            mem::clear_start_time(ui, id);
-            mem::clear_animation_layer(ui, id);
+        match self.run_state() {
+            RunState::OutSeg(normal) => {
+                self.animate_out(ui, id, normal, |ui| add_contents(ui, start_value))
+            }
+            RunState::InSeg(normal) => {
+                mem::clear_animation_layer(ui, id);
+                self.animate_in(ui, id, normal, |ui| add_contents(ui, current_value))
+            }
+            RunState::None => {
+                mem::clear_start_value::<T>(ui, id);
+                mem::clear_start_time(ui, id);
+                mem::clear_animation_layer(ui, id);
 
-            add_contents(ui, current_value)
+                add_contents(ui, current_value)
+            }
         }
     }
 
@@ -190,6 +235,39 @@ impl AnimationState {
         add_contents: impl FnOnce(&mut egui::Ui) -> R,
     ) -> R {
         self.animation.in_seg.animate(ui, id, normal, add_contents)
+    }
+
+    /// Get the `RunState` for the current frame.
+    fn run_state(&self) -> RunState {
+        if let Some(normal) = self.out_elapsed_normal() {
+            RunState::OutSeg(normal)
+        } else if let Some(normal) = self.in_elapsed_normal() {
+            RunState::InSeg(normal)
+        } else {
+            RunState::None
+        }
+    }
+}
+
+/// An identified animation segment and *normal*.
+#[derive(Debug, Default, PartialEq, PartialOrd)]
+pub enum RunState {
+    /// The *out* animation segment normal.
+    OutSeg(f32),
+    /// The *in* animation segment normal.
+    InSeg(f32),
+    /// The animation is not currently running.
+    #[default]
+    None,
+}
+
+impl RunState {
+    /// Returns `true` if the animation is in either the *out* or *in* state.
+    pub fn is_running(&self) -> bool {
+        match self {
+            RunState::OutSeg(_) | RunState::InSeg(_) => true,
+            RunState::None => false,
+        }
     }
 }
 

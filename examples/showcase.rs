@@ -7,16 +7,6 @@ use egui_animate::{Animation, AnimationSegment, animate};
 /// The distance to slide out/in.
 const SLIDE_DISTANCE: f32 = 10.0;
 
-/*
-    # Example Animations
-
-    Below are some common and more abstract animations that can be used to transition
-    between variables. An animation can be constructed with:
-    ```
-    const ANIM: Animation = Animation::new(duration, out_fn, in_fn);
-    ```
-*/
-
 mod fade {
     pub fn out_fn(ui: &mut egui::Ui, normal: f32) {
         ui.set_opacity(1.0 - normal);
@@ -156,13 +146,11 @@ mod fade_red {
     }
 }
 
-/**
-    # Animation Type
-
-    Used for constructing an `Animation` from the configured variant, mapping to
-    the out/in functions. Simplifies construction of an animation for `ExampleApp`.
-    Typically defining a `const` Animation is sufficient for most use cases.
-*/
+/// # Animation Type
+///
+/// Used for constructing an `Animation` from the configured variant, mapping to
+/// the out/in functions. Simplifies construction of an animation for `ExampleApp`.
+/// Typically defining a `const` Animation is sufficient for most use cases.
 #[repr(usize)]
 #[derive(Default, PartialEq, Clone, Copy)]
 enum AnimationType {
@@ -234,13 +222,11 @@ impl AnimationType {
     }
 }
 
-/**
-    # Example App
-
-    Creates an `Animation` from a given configuration. Stores the state of the
-    animated value.
-*/
-struct ExampleApp {
+/// # Example App
+///
+/// Creates an `Animation` from a given configuration. Stores the state of the
+/// animated value.
+struct ShowcaseApp {
     /// The value to animate on change.
     value_state: u8,
 
@@ -254,9 +240,9 @@ struct ExampleApp {
     in_dur: f32,
 }
 
-impl Default for ExampleApp {
+impl Default for ShowcaseApp {
     fn default() -> Self {
-        ExampleApp {
+        ShowcaseApp {
             value_state: 0,
             out_dur: 0.4,
             in_dur: 0.4,
@@ -267,7 +253,7 @@ impl Default for ExampleApp {
     }
 }
 
-impl ExampleApp {
+impl ShowcaseApp {
     /// Create an `Animation` from given configuration.
     fn into_anim(&self) -> Animation {
         let out_seg = AnimationSegment {
@@ -282,12 +268,15 @@ impl ExampleApp {
     }
 }
 
-impl eframe::App for ExampleApp {
+impl eframe::App for ShowcaseApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Animation config");
+            ui.heading("Showcase Example");
+            ui.label("This example demonstrates:");
+            ui.label("• Animating an entire ui scope");
+            ui.label("• Dynamically changing in/out animation segments");
+            ui.label("• Various example animations");
             ui.separator();
-            ui.label("A collection of custom example animations");
 
             ui.group(|ui| {
                 ui.label("Animation for the prior value before transition");
@@ -308,9 +297,6 @@ impl eframe::App for ExampleApp {
                 ui.add(egui::Slider::new(&mut self.in_dur, 0.0..=2.0).text("Duration"));
                 self.in_anim.combo_box(ui, "In animation type");
             });
-
-            ui.heading("Example");
-            ui.separator();
 
             animate(
                 ui,
@@ -343,8 +329,8 @@ impl eframe::App for ExampleApp {
 
 fn main() -> eframe::Result {
     eframe::run_native(
-        "Minimal Example",
+        "Showcase App",
         NativeOptions::default(),
-        Box::new(|_| Ok(Box::<ExampleApp>::default())),
+        Box::new(|_| Ok(Box::<ShowcaseApp>::default())),
     )
 }
