@@ -11,7 +11,8 @@ keywords = ["egui", "animate", "animation", "transition"]
 categories = ["gui", "game-development"]
 
 [dependencies]
-egui = "0.32.0"
+egui = "0.33.0"
+eframe = "0.33.3"
 
 [dev-dependencies]
-eframe = "0.32.0"
+eframe = "0.33.3"
